@@ -488,8 +488,13 @@ public class WingManipulator : PartModule, IPartCostModifier
                 FARtype.GetField("TaperRatio").SetValue(FARmodule, taperRatio);
                 FARtype.GetField("ctrlSurfFrac").SetValue(FARmodule, modelControlSurfaceFraction);
                 //print("Set fields");
-                if(doInteraction)
-                    FARtype.GetMethod("StartInitialization").Invoke(FARmodule, null);
+                if (doInteraction)
+                {
+                    if (FARactive)
+                        FARtype.GetMethod("StartInitialization").Invoke(FARmodule, null);
+                    else if (NEARactive)
+                        FARtype.GetMethod("Start").Invoke(FARmodule, null);
+                }
             }
             else if (part.Modules.Contains("FARWingAerodynamicModel"))
             {
@@ -501,7 +506,12 @@ public class WingManipulator : PartModule, IPartCostModifier
                 FARtype.GetField("MidChordSweep").SetValue(FARmodule, midChordSweep);
                 FARtype.GetField("TaperRatio").SetValue(FARmodule, taperRatio);
                 if (doInteraction)
-                    FARtype.GetMethod("StartInitialization").Invoke(FARmodule, null);   
+                {
+                    if (FARactive)
+                        FARtype.GetMethod("StartInitialization").Invoke(FARmodule, null);
+                    else if (NEARactive)
+                        FARtype.GetMethod("Start").Invoke(FARmodule, null);
+                }
             }
             if (!triggerUpdate && doInteraction)
                 TriggerUpdateAllWings();
@@ -577,17 +587,21 @@ public class WingManipulator : PartModule, IPartCostModifier
         if (FARactive || NEARactive)
         {
             CalculateAerodynamicValues(false);
-            if (part.Modules.Contains("FARControllableSurface"))
+            if (FARactive)
             {
-                PartModule FARmodule = part.Modules["FARControllableSurface"];
-                Type FARtype = FARmodule.GetType();
-                FARtype.GetMethod("TriggerPartColliderUpdate").Invoke(FARmodule, null);
-            }
-            else if (part.Modules.Contains("FARWingAerodynamicModel"))
-            {
-                PartModule FARmodule = part.Modules["FARWingAerodynamicModel"];
-                Type FARtype = FARmodule.GetType();
-                FARtype.GetMethod("TriggerPartColliderUpdate").Invoke(FARmodule, null);
+                if (part.Modules.Contains("FARControllableSurface"))
+                {
+                    PartModule FARmodule = part.Modules["FARControllableSurface"];
+                    Type FARtype = FARmodule.GetType();
+                    if(!NEARactive)
+                        FARtype.GetMethod("TriggerPartColliderUpdate").Invoke(FARmodule, null);
+                }
+                else if (part.Modules.Contains("FARWingAerodynamicModel"))
+                {
+                    PartModule FARmodule = part.Modules["FARWingAerodynamicModel"];
+                    Type FARtype = FARmodule.GetType();
+                    FARtype.GetMethod("TriggerPartColliderUpdate").Invoke(FARmodule, null);
+                }
             }
         }
     }
