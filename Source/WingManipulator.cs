@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using System.Reflection;
-
-
 
 public class WingManipulator : PartModule, IPartCostModifier
 {
@@ -853,10 +850,45 @@ public class WingManipulator : PartModule, IPartCostModifier
         base.OnLoad(node);
     }
 
+    bool _keyTipScaleDown = false;
+    bool _keyRootScaleDown = false;
+    bool _keyTranslationDown = false;
+    bool _hasMouseFocus = false;
+    bool _hasMouseAndKeyFocus = false;
+
+    void OnMouseEnter()
+    {
+        _hasMouseFocus = true;
+    }
+
+    void OnMouseExit()
+    {
+        _hasMouseFocus = false;
+    }
+
     public void Update()
     {
         if (HighLogic.LoadedSceneIsEditor)
         {
+            _keyTipScaleDown &= !Input.GetKeyUp(keyTipScale);
+            _keyRootScaleDown &= !Input.GetKeyUp(keyRootScale);
+            _keyTranslationDown &= !Input.GetKeyUp(keyTranslation);
+            if (_keyTipScaleDown && _keyRootScaleDown && _keyTranslationDown)
+            {
+                _hasMouseAndKeyFocus = false;
+            }
+            if (_hasMouseFocus)
+            {
+                _keyTipScaleDown |= Input.GetKeyDown(keyTipScale);
+                _keyRootScaleDown |= Input.GetKeyDown(keyRootScale);
+                _keyTranslationDown |= Input.GetKeyDown(keyTranslation);
+
+                if (_keyTipScaleDown || _keyRootScaleDown || _keyTranslationDown)
+                {
+                    _hasMouseAndKeyFocus = true;
+                }
+            }
+
             //Sets the skinned meshrenderer to update even when culled for being outside the screen
             if (wingSMR.updateWhenOffscreen != true)
                 wingSMR.updateWhenOffscreen = true;
@@ -923,6 +955,7 @@ public class WingManipulator : PartModule, IPartCostModifier
             // We're in editor. Allow scaling with mouse.
             // Let's check that the parent is not null, we're attached to something, and one of the keys is down.
             if (this.part.parent != null &&
+                _hasMouseAndKeyFocus &&
                 IsAttached &&
                 (Input.GetKey(keyTipScale) ||
                 Input.GetKey(keyRootScale) ||
@@ -972,7 +1005,7 @@ public class WingManipulator : PartModule, IPartCostModifier
                 }
 
                 // Tip scaling
-                if (Input.GetKey(keyTipScale))
+                if (Input.GetKey(keyTipScale) && _hasMouseAndKeyFocus)
                 {
                     tipScale += (Input.GetAxis("Mouse Y") * scaleSpeed * scaleMultipleTip);
                     // Clamp scale values to -1 to prevent hourglass wings
@@ -990,6 +1023,7 @@ public class WingManipulator : PartModule, IPartCostModifier
                 // or we were told to ignore snapping,
                 // or the part is set to ignore snapping (wing edge control surfaces, tipically)
                 if (Input.GetKey(keyRootScale) && 
+                    _hasMouseAndKeyFocus &&
                     (!this.part.parent.Modules.Contains("WingManipulator") ||
                     IgnoreSnapping ||
                     doNotParticipateInParentSnapping))
